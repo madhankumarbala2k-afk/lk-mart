@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard — LK Mart | Leon Knight Mart</title>
+  <meta name="description" content="LK Mart seller and buyer dashboard — add products and shop from direct sellers." />
+  <link rel="icon" type="image/png" href="logo.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body class="dashboard-page">
+
+  <!-- Loading Screen -->
+  <div class="loading-screen" id="loading-screen">
+    <div class="loading-logo">LK Mart</div>
+    <div class="loading-bar">
+      <div class="loading-bar-fill"></div>
+    </div>
+    <p style="font-size:0.78rem;color:#9e9e9e;margin-top:0.3rem;">Loading marketplace…</p>
+  </div>
+
+  <!-- ── NAVBAR ── -->
+  <nav class="navbar" role="navigation" aria-label="Main navigation">
+    <div class="nav-logo">
+      <img src="logo.png" alt="LK Mart" class="nav-logo-img" />
+    </div>
+
+    <div class="nav-right">
+      <span class="nav-user-email" id="nav-user-email" aria-label="Logged in user"></span>
+      <span class="nav-role-badge" id="nav-role-badge"></span>
+      <button class="btn-logout" id="logout-btn" aria-label="Logout">Logout</button>
+    </div>
+  </nav>
+
+  <!-- ── MAIN ── -->
+  <main class="dashboard-main">
+
+    <!-- Stats Bar -->
+    <div class="stats-bar">
+      <div class="stat-pill">
+        <div>
+          <div class="stat-pill-val" id="stat-total">0</div>
+          <div class="stat-pill-label">Total Products</div>
+        </div>
+      </div>
+      <div class="stat-pill">
+        <div>
+          <div class="stat-pill-val" id="stat-avg">₹0</div>
+          <div class="stat-pill-label">Avg. Price</div>
+        </div>
+      </div>
+      <div class="stat-pill">
+        <div>
+          <div class="stat-pill-val" id="stat-premium">0</div>
+          <div class="stat-pill-label">Premium Items</div>
+        </div>
+      </div>
+      <div class="stat-pill">
+        <div>
+          <div class="stat-pill-val" id="stat-cities">0</div>
+          <div class="stat-pill-label">Cities</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <div class="dash-tabs" role="tablist">
+      <button class="dash-tab active" id="tab-shop"     data-tab="shop"     role="tab" aria-selected="true">Shop</button>
+      <button class="dash-tab"        id="tab-add"      data-tab="add"      role="tab" aria-selected="false">Add Product</button>
+      <button class="dash-tab"        id="tab-listings" data-tab="listings" role="tab" aria-selected="false">My Listings</button>
+    </div>
+
+    <!-- ── SECTION: SHOP ── -->
+    <section class="shop-section active" id="section-shop">
+
+      <div class="product-toolbar">
+        <h2 class="section-heading" style="border:none;margin:0;padding:0;">All Products</h2>
+
+        <div style="display:flex;align-items:center;gap:0.7rem;flex-wrap:wrap;">
+          <div class="search-box">
+            <input
+              type="search"
+              id="search-input"
+              placeholder="Search products…"
+              aria-label="Search products"
+            />
+            <button aria-label="Search">&#128269;</button>
+          </div>
+          <span class="product-count-label" id="products-count">0 products</span>
+        </div>
+      </div>
+
+      <div class="products-grid" id="products-grid">
+        <!-- injected by JS -->
+      </div>
+
+    </section>
+
+    <!-- ── SECTION: ADD PRODUCT ── -->
+    <section class="add-section" id="section-add">
+
+      <h2 class="section-heading">Add New Product</h2>
+
+      <div class="add-card">
+
+        <div id="add-alert" class="alert-box" role="alert"></div>
+
+        <form id="add-product-form" novalidate>
+
+          <div class="form-group full">
+            <label class="form-label" for="prod-name">Product Name *</label>
+            <input id="prod-name" type="text" class="form-input" placeholder="e.g. Samsung 65-inch 4K TV" required />
+            <span class="error-msg" id="prod-name-error">Product name is required.</span>
+          </div>
+
+          <div class="form-row">
+
+            <div class="form-group">
+              <label class="form-label" for="prod-price">Your Price (₹) *</label>
+              <input id="prod-price" type="number" class="form-input" placeholder="e.g. 4999" min="1" step="1" required />
+              <span class="error-msg" id="prod-price-error">Enter a valid price (min ₹1).</span>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="prod-location">Location / City *</label>
+              <input id="prod-location" type="text" class="form-input" placeholder="e.g. Chennai" required />
+              <span class="error-msg" id="prod-location-error">City name is required.</span>
+            </div>
+
+          </div>
+
+          <!-- IMAGE: Upload OR URL -->
+          <div class="form-group full">
+            <label class="form-label">Product Image</label>
+
+            <!-- Upload box -->
+            <div class="img-upload-box" id="img-upload-box">
+              <input
+                type="file"
+                id="prod-img-file"
+                accept="image/*"
+                style="display:none;"
+              />
+              <!-- Preview -->
+              <div id="img-preview-wrap" style="display:none;">
+                <img id="img-preview" src="" alt="Preview" />
+                <button type="button" class="img-remove-btn" id="img-remove-btn">&#10005; Remove</button>
+              </div>
+              <!-- Drop zone / click zone -->
+              <div class="img-drop-zone" id="img-drop-zone">
+                <div class="img-drop-icon">&#128247;</div>
+                <div class="img-drop-text">Click or drag to upload photo</div>
+                <div class="img-drop-sub">JPG, PNG, WEBP &mdash; max 5 MB</div>
+                <button type="button" class="btn btn-grey" id="img-pick-btn" style="margin-top:0.6rem;font-size:0.8rem;padding:0.45rem 1rem;">
+                  Choose Photo
+                </button>
+              </div>
+            </div>
+
+            <!-- Upload progress bar -->
+            <div class="upload-progress" id="upload-progress" style="display:none;">
+              <div class="upload-progress-bar" id="upload-progress-bar"></div>
+              <span class="upload-progress-label" id="upload-progress-label">Uploading… 0%</span>
+            </div>
+
+            <!-- OR divider -->
+            <div class="img-or-divider">OR paste an image URL</div>
+
+            <input
+              id="prod-img"
+              type="url"
+              class="form-input"
+              placeholder="https://images.unsplash.com/photo-xxx"
+            />
+            <span class="error-msg" id="prod-img-error">Enter a valid URL (must start with https://).</span>
+            <p style="font-size:0.71rem;color:#9e9e9e;margin-top:0.3rem;">
+              &#128161; URL works with Imgur, Unsplash, Wikipedia. Flipkart/Amazon URLs are blocked by those sites.
+            </p>
+          </div>
+
+          <!-- Live Commission Preview -->
+          <div class="commission-box" id="commission-box">
+            <div class="cb-row">
+              <span>Your Price</span>
+              <strong id="cb-seller-price">₹0</strong>
+            </div>
+            <div class="cb-row">
+              <span id="cb-comm-label">Commission (5%)</span>
+              <strong id="cb-commission" style="color:#f57c00;">₹0</strong>
+            </div>
+            <hr class="cb-divider" />
+            <div class="cb-row">
+              <span style="font-weight:700;">Final Buyer Price</span>
+              <span class="cb-total" id="cb-final">₹0</span>
+            </div>
+            <p class="cb-note">
+              Commission: 5% for products ≤ ₹5,000 — 10% for products above ₹5,000
+            </p>
+          </div>
+
+          <div style="margin-top:1.2rem; display:flex; gap:0.7rem; flex-wrap:wrap;">
+            <button type="submit" id="add-product-btn" class="btn btn-primary" style="width:auto;padding:0.7rem 2rem;">
+              <span id="add-btn-text">Add Product</span>
+              <span id="add-btn-spinner" class="spinner hidden"></span>
+            </button>
+            <button type="button" id="clear-form-btn" class="btn btn-grey">Clear</button>
+          </div>
+
+        </form>
+      </div>
+
+    </section>
+
+    <!-- ── SECTION: MY LISTINGS ── -->
+    <section class="listings-section" id="section-listings">
+
+      <div class="product-toolbar">
+        <h2 class="section-heading" style="border:none;margin:0;padding:0;">My Listings</h2>
+        <span class="product-count-label" id="listings-count">0 products</span>
+      </div>
+
+      <div class="products-grid" id="listings-grid">
+        <!-- injected by JS -->
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- ── BUY NOW MODAL ── -->
+  <div class="modal-overlay hidden" id="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-name">
+    <div class="modal-box">
+      <button class="modal-close" id="modal-close" aria-label="Close">&#10005;</button>
+
+      <div class="modal-img-wrap">
+        <img src="" alt="Product image" id="modal-img" />
+      </div>
+
+      <div class="modal-body">
+        <div class="modal-seller-label">&#10003; Direct Seller Product</div>
+        <h3 class="modal-name" id="modal-name">—</h3>
+        <p  class="modal-location" id="modal-location">—</p>
+        <div class="modal-price" id="modal-price">₹0</div>
+        <p  class="modal-delivery">&#128666; Delivery charges vary based on location</p>
+
+        <button class="btn-buy-now" id="modal-buy-btn" style="font-size:0.9rem;padding:0.75rem;">
+          Buy Now
+        </button>
+        <button class="btn-add-cart">
+          Add to Cart
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── TOAST CONTAINER ── -->
+  <div class="toast-wrap" id="toast-wrap" aria-live="polite"></div>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="firebase.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

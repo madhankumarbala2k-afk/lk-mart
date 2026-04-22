@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LK Mart — Login | Leon Knight Mart</title>
+  <meta name="description" content="Sign in to Leon Knight Mart (LK Mart) — India's direct seller marketplace." />
+  <link rel="icon" type="image/png" href="logo.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body class="login-page">
+
+  <!-- Blue banner + white card wrapper -->
+  <div style="width:100%; max-width:400px;">
+
+    <!-- Blue top banner -->
+    <div class="login-banner">
+      <!-- Logo -->
+      <div class="login-logo-wrap">
+        <img src="logo.png" alt="LK Mart Logo" class="login-logo-img" />
+      </div>
+      <p class="login-banner-tagline">Leon Knight Mart &mdash; Direct Seller Marketplace</p>
+      <p style="margin-top:0.4rem; font-size:0.76rem; opacity:0.7;">Login or create a new account</p>
+    </div>
+
+    <!-- White form card -->
+    <div class="login-card">
+
+      <!-- Buyer / Seller tabs -->
+      <div class="role-tabs" role="tablist">
+        <button class="role-tab active" id="tab-buyer"  data-role="buyer"  role="tab" aria-selected="true">Buyer</button>
+        <button class="role-tab"        id="tab-seller" data-role="seller" role="tab" aria-selected="false">Seller</button>
+      </div>
+
+      <!-- Alert -->
+      <div id="login-alert" class="alert-box" role="alert"></div>
+
+      <!-- Form -->
+      <form id="login-form" novalidate>
+
+        <div class="form-group">
+          <label class="form-label" for="email-input">Email Address</label>
+          <input
+            id="email-input"
+            type="email"
+            class="form-input"
+            placeholder="Enter your email"
+            autocomplete="email"
+            required
+          />
+          <span class="error-msg" id="email-error">Please enter a valid email address.</span>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="password-input">Password</label>
+          <input
+            id="password-input"
+            type="password"
+            class="form-input"
+            placeholder="Enter your password"
+            autocomplete="current-password"
+            required
+          />
+          <span class="error-msg" id="password-error">Password must be at least 6 characters.</span>
+        </div>
+
+        <button type="submit" id="login-btn" class="btn btn-primary" style="margin-top:0.4rem;">
+          <span id="login-btn-text">Login</span>
+          <span id="login-btn-spinner" class="spinner hidden"></span>
+        </button>
+
+      </form>
+
+      <div class="login-footer">
+        New to LK Mart?&nbsp;
+        <button class="link-btn" id="register-btn" type="button">Create Account</button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="firebase.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

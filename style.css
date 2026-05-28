@@ -69,7 +69,7 @@ img { max-width: 100%; display: block; }
 }
 
 .login-logo-img {
-  height: 54px;
+  height: 70px;
   width: auto;
   display: block;
   object-fit: contain;
@@ -283,7 +283,7 @@ img { max-width: 100%; display: block; }
    ============================================================ */
 .navbar {
   background: #2874f0;
-  height: 66px;
+  height: 80px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -301,11 +301,11 @@ img { max-width: 100%; display: block; }
 
 /* Logo image in navbar — white pill so it shows on blue bg */
 .nav-logo-img {
-  height: 52px;
+  height: 72px;
   width: auto;
   background: #fff;
-  border-radius: 6px;
-  padding: 4px 10px;
+  border-radius: 8px;
+  padding: 5px 14px;
   object-fit: contain;
   display: block;
 }
@@ -1125,11 +1125,11 @@ img { max-width: 100%; display: block; }
    NAVBAR LOGO — updated for new larger logo
    ============================================================ */
 .nav-logo-img {
-  height: 52px;
+  height: 72px;
   width: auto;
   background: #fff;
-  border-radius: 6px;
-  padding: 4px 10px;
+  border-radius: 8px;
+  padding: 5px 14px;
   object-fit: contain;
   display: block;
 }

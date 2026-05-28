@@ -1,6 +1,7 @@
 /* ============================================================
    LK Mart — app.js
    Handles: Auth, Products (Firestore), UI interactions
+   Features: Quantity, Out-of-Stock, Location Filter, Search
    ============================================================ */
 
 'use strict';
@@ -74,8 +75,18 @@ function isValidEmail(email) {
 
 /** Validate URL (optional field) */
 function isValidUrl(url) {
-  if (!url.trim()) return true; // optional
+  if (!url.trim()) return true;
   try { new URL(url); return true; } catch { return false; }
+}
+
+/** XSS protection */
+function esc(str) {
+  return String(str ?? '')
+    .replace(/&/g,  '&amp;')
+    .replace(/</g,  '&lt;')
+    .replace(/>/g,  '&gt;')
+    .replace(/"/g,  '&quot;')
+    .replace(/'/g,  '&#39;');
 }
 
 // ────────────────────────────────────────────────────────────
@@ -90,9 +101,8 @@ const IS_DASHBOARD = document.getElementById('section-shop')   !== null;
 // ============================================================
 if (IS_LOGIN) {
 
-  let currentRole = 'buyer'; // 'buyer' | 'seller'
+  let currentRole = 'buyer';
 
-  // ── Role Tabs ──
   document.querySelectorAll('.role-tab').forEach(btn => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('.role-tab').forEach(b => {
@@ -106,7 +116,6 @@ if (IS_LOGIN) {
     });
   });
 
-  // ── Form Validation ──
   function validateLoginForm() {
     let valid = true;
 
@@ -135,7 +144,6 @@ if (IS_LOGIN) {
     return valid;
   }
 
-  // ── Login / Register ──
   let isRegisterMode = false;
 
   function updateLoginUI() {
@@ -171,7 +179,6 @@ if (IS_LOGIN) {
       let userCred;
       if (isRegisterMode) {
         userCred = await auth.createUserWithEmailAndPassword(email, password);
-        // Save role to Firestore
         await db.collection('users').doc(userCred.user.uid).set({
           email,
           role: currentRole,
@@ -181,21 +188,19 @@ if (IS_LOGIN) {
         userCred = await auth.signInWithEmailAndPassword(email, password);
       }
 
-      // Store role locally for dashboard use
       localStorage.setItem('lkmart_role', currentRole);
-
-      // Redirect
       window.location.href = 'dashboard.html';
 
     } catch (err) {
       const msgs = {
-        'auth/user-not-found':      'No account found with this email.',
-        'auth/wrong-password':      'Incorrect password. Please try again.',
-        'auth/email-already-in-use':'This email is already registered. Please login.',
-        'auth/invalid-email':       'Invalid email address.',
-        'auth/weak-password':       'Password must be at least 6 characters.',
-        'auth/too-many-requests':   'Too many attempts. Please wait and try again.',
-        'auth/network-request-failed': 'Network error. Check your internet connection.'
+        'auth/user-not-found':       'No account found with this email.',
+        'auth/wrong-password':       'Incorrect password. Please try again.',
+        'auth/email-already-in-use': 'This email is already registered. Please login.',
+        'auth/invalid-email':        'Invalid email address.',
+        'auth/weak-password':        'Password must be at least 6 characters.',
+        'auth/too-many-requests':    'Too many attempts. Please wait and try again.',
+        'auth/network-request-failed': 'Network error. Check your internet connection.',
+        'auth/invalid-credential':   'Invalid email or password. Please check and try again.'
       };
       setAlert('login-alert', msgs[err.code] || err.message, 'error');
     } finally {
@@ -203,7 +208,6 @@ if (IS_LOGIN) {
     }
   });
 
-  // ── Auth state: if already logged in, skip to dashboard ──
   auth.onAuthStateChanged(user => {
     if (user) window.location.href = 'dashboard.html';
   });
@@ -216,7 +220,6 @@ if (IS_LOGIN) {
 // ============================================================
 if (IS_DASHBOARD) {
 
-  // ── Hide loading screen after small delay ──
   function hideLoading() {
     const ls = document.getElementById('loading-screen');
     if (!ls) return;
@@ -227,27 +230,24 @@ if (IS_DASHBOARD) {
     }, 900);
   }
 
-  // ── Auth guard: redirect to login if not authenticated ──
+  // ── Auth guard ──
   auth.onAuthStateChanged(async (user) => {
     if (!user) {
       window.location.href = 'index.html';
       return;
     }
 
-    // Get role (from Firestore or localStorage fallback)
     let role = localStorage.getItem('lkmart_role') || 'buyer';
     try {
       const snap = await db.collection('users').doc(user.uid).get();
       if (snap.exists && snap.data().role) role = snap.data().role;
-    } catch (_) { /* use localStorage fallback */ }
+    } catch (_) {}
 
-    // Update navbar
     const emailEl = document.getElementById('nav-user-email');
     const roleEl  = document.getElementById('nav-role-badge');
     if (emailEl) emailEl.textContent = user.email;
     if (roleEl)  roleEl.textContent  = role.toUpperCase();
 
-    // Show/hide "Add Product" and "My Listings" tabs for buyers
     const addTab      = document.getElementById('tab-add');
     const listingsTab = document.getElementById('tab-listings');
     if (role === 'buyer') {
@@ -255,7 +255,6 @@ if (IS_DASHBOARD) {
       if (listingsTab) listingsTab.style.display = 'none';
     }
 
-    // Init dashboard
     initDashboard(user, role);
     hideLoading();
   });
@@ -281,14 +280,12 @@ if (IS_DASHBOARD) {
   };
 
   function switchTab(tabName) {
-    // Update tab buttons
     document.querySelectorAll('.dash-tab').forEach(btn => {
       const isActive = btn.dataset.tab === tabName;
       btn.classList.toggle('active', isActive);
       btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
     });
 
-    // Show/hide sections
     Object.entries(SECTIONS).forEach(([name, el]) => {
       if (!el) return;
       if (name === tabName) {
@@ -305,7 +302,6 @@ if (IS_DASHBOARD) {
     btn.addEventListener('click', () => switchTab(btn.dataset.tab));
   });
 
-  // Start on Shop tab
   switchTab('shop');
 
   // ──────────────────────────────────────────────────────────
@@ -318,30 +314,32 @@ if (IS_DASHBOARD) {
       initAddProductForm(user.uid);
     }
     initModal();
-    initSearch();
+    initSearchAndFilter();
     initClearForm();
   }
 
   // ──────────────────────────────────────────────────────────
-  //  LOAD ALL PRODUCTS (Marketplace / Shop)
+  //  ALL PRODUCTS — stored globally for search/filter
   // ──────────────────────────────────────────────────────────
-  function loadAllProducts() {
-    const grid        = document.getElementById('products-grid');
-    const countLabel  = document.getElementById('products-count');
+  let _allProducts = [];
 
-    // Simple query — no composite index needed. Sort client-side.
+  function loadAllProducts() {
+    const grid       = document.getElementById('products-grid');
+    const countLabel = document.getElementById('products-count');
+
     db.collection('products')
       .onSnapshot(snapshot => {
-        const products = snapshot.docs
+        _allProducts = snapshot.docs
           .map(d => ({ id: d.id, ...d.data() }))
           .sort((a, b) => {
             const ta = a.createdAt ? a.createdAt.toMillis() : 0;
             const tb = b.createdAt ? b.createdAt.toMillis() : 0;
-            return tb - ta; // newest first
+            return tb - ta;
           });
-        renderShopGrid(products);
-        updateStats(products);
-        if (countLabel) countLabel.textContent = `${products.length} product${products.length !== 1 ? 's' : ''}`;
+
+        updateLocationFilter(_allProducts);
+        applySearchAndFilter();
+        updateStats(_allProducts);
       }, err => {
         if (grid) grid.innerHTML = `<div class="empty-state"><p style="color:#e53935;">Error loading products: ${err.message}</p></div>`;
       });
@@ -355,29 +353,31 @@ if (IS_DASHBOARD) {
       grid.innerHTML = `
         <div class="empty-state">
           <div class="empty-state-icon">&#128722;</div>
-          <h3>No products yet</h3>
-          <p>Check back later or ask sellers to add products.</p>
+          <h3>No products found</h3>
+          <p>Try a different search or filter.</p>
         </div>`;
       return;
     }
 
     grid.innerHTML = products.map(p => buildBuyerCard(p)).join('');
 
-    // Attach buy-now click events
     grid.querySelectorAll('.js-buy-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         const id = btn.dataset.productId;
-        const p  = products.find(x => x.id === id);
+        const p  = _allProducts.find(x => x.id === id);
         if (p) openModal(p);
       });
     });
   }
 
+  // ──────────────────────────────────────────────────────────
+  //  BUILD BUYER CARD — includes quantity + out-of-stock
+  // ──────────────────────────────────────────────────────────
   function buildBuyerCard(p) {
     const { final, isPremium } = calcCommission(p.sellerPrice);
+    const qty       = typeof p.quantity !== 'undefined' ? parseInt(p.quantity) : null;
+    const outOfStock = qty !== null && qty <= 0;
 
-    // Use two sibling elements: img + fallback div
-    // onerror hides the img and shows the fallback
     const imgBlock = p.imageUrl
       ? `<img
            src="${esc(p.imageUrl)}"
@@ -393,33 +393,43 @@ if (IS_DASHBOARD) {
            <span>&#128247;</span>No Image
          </div>`;
 
+    const qtyBadge = outOfStock
+      ? `<span class="qty-badge out-of-stock">Out of Stock</span>`
+      : qty !== null
+        ? `<span class="qty-badge in-stock">Qty: ${qty}</span>`
+        : '';
+
+    const buyBtn = outOfStock
+      ? `<button class="btn-buy-now btn-disabled" disabled>Out of Stock</button>`
+      : `<button class="btn-buy-now js-buy-btn" data-product-id="${esc(p.id)}">Buy Now</button>`;
+
     return `
-      <div class="product-card">
+      <div class="product-card${outOfStock ? ' card-oos' : ''}">
         <div class="card-img-wrap">
           ${imgBlock}
           <span class="card-tag">Direct Seller</span>
           ${isPremium ? '<span class="card-tag premium">Premium</span>' : ''}
+          ${outOfStock ? '<span class="card-tag oos-tag">Out of Stock</span>' : ''}
         </div>
         <div class="card-body">
           <div class="card-name" title="${esc(p.name)}">${esc(p.name)}</div>
           <div class="card-location">&#128205; ${esc(p.location)}</div>
           <div class="card-price">${formatINR(final)}</div>
+          ${qtyBadge}
           <div class="card-seller-label">&#10003; Direct Seller Product</div>
           <div class="card-delivery">&#128666; Delivery charges vary based on location</div>
-          <button class="btn-buy-now js-buy-btn" data-product-id="${esc(p.id)}">Buy Now</button>
+          ${buyBtn}
           <button class="btn-add-cart" onclick="showToast('Added to cart (demo)', 'info')">Add to Cart</button>
         </div>
       </div>`;
   }
 
   // ──────────────────────────────────────────────────────────
-  //  LOAD MY LISTINGS (Seller's own products)
+  //  MY LISTINGS
   // ──────────────────────────────────────────────────────────
   function loadMyListings(uid) {
-    const grid  = document.getElementById('listings-grid');
     const count = document.getElementById('listings-count');
 
-    // Filter by sellerId only (no composite index needed). Sort client-side.
     db.collection('products')
       .where('sellerId', '==', uid)
       .onSnapshot(snapshot => {
@@ -451,14 +461,26 @@ if (IS_DASHBOARD) {
 
     grid.innerHTML = products.map(p => buildSellerCard(p)).join('');
 
-    // Delete buttons
     grid.querySelectorAll('.js-delete-btn').forEach(btn => {
       btn.addEventListener('click', () => deleteProduct(btn.dataset.productId));
     });
+
+    grid.querySelectorAll('.js-qty-up').forEach(btn => {
+      btn.addEventListener('click', () => updateQty(btn.dataset.productId, 1));
+    });
+
+    grid.querySelectorAll('.js-qty-down').forEach(btn => {
+      btn.addEventListener('click', () => updateQty(btn.dataset.productId, -1));
+    });
   }
 
+  // ──────────────────────────────────────────────────────────
+  //  BUILD SELLER CARD — shows real prices + quantity controls
+  // ──────────────────────────────────────────────────────────
   function buildSellerCard(p) {
     const { comm, final, rate, isPremium } = calcCommission(p.sellerPrice);
+    const qty       = typeof p.quantity !== 'undefined' ? parseInt(p.quantity) : 0;
+    const outOfStock = qty <= 0;
 
     const imgBlock = p.imageUrl
       ? `<img
@@ -476,11 +498,12 @@ if (IS_DASHBOARD) {
          </div>`;
 
     return `
-      <div class="product-card">
+      <div class="product-card${outOfStock ? ' card-oos' : ''}">
         <div class="card-img-wrap">
           ${imgBlock}
           <span class="card-tag">Direct Seller</span>
           ${isPremium ? '<span class="card-tag premium">Premium</span>' : ''}
+          ${outOfStock ? '<span class="card-tag oos-tag">Out of Stock</span>' : ''}
         </div>
         <div class="card-body">
           <div class="card-name" title="${esc(p.name)}">${esc(p.name)}</div>
@@ -499,9 +522,39 @@ if (IS_DASHBOARD) {
               <div class="seller-final-val">${formatINR(final)}</div>
             </div>
           </div>
+
+          <!-- Quantity controls -->
+          <div class="qty-control-row">
+            <span class="qty-control-label">Stock:</span>
+            <button class="qty-btn js-qty-down" data-product-id="${esc(p.id)}" ${qty <= 0 ? 'disabled' : ''}>−</button>
+            <span class="qty-display ${outOfStock ? 'qty-oos' : ''}">${qty}</span>
+            <button class="qty-btn js-qty-up" data-product-id="${esc(p.id)}">+</button>
+            ${outOfStock ? '<span class="oos-label">Out of Stock</span>' : ''}
+          </div>
+
           <button class="btn-delete js-delete-btn" data-product-id="${esc(p.id)}">&#128465; Delete Listing</button>
         </div>
       </div>`;
+  }
+
+  // ──────────────────────────────────────────────────────────
+  //  UPDATE QUANTITY
+  // ──────────────────────────────────────────────────────────
+  async function updateQty(productId, delta) {
+    try {
+      const ref  = db.collection('products').doc(productId);
+      const snap = await ref.get();
+      if (!snap.exists) return;
+      const currentQty = parseInt(snap.data().quantity) || 0;
+      const newQty     = Math.max(0, currentQty + delta);
+      await ref.update({
+        quantity:    newQty,
+        inStock:     newQty > 0
+      });
+      showToast(`Stock updated to ${newQty}.`, 'success');
+    } catch (err) {
+      showToast('Failed to update stock: ' + err.message, 'error');
+    }
   }
 
   // ──────────────────────────────────────────────────────────
@@ -523,7 +576,6 @@ if (IS_DASHBOARD) {
   function initAddProductForm(uid) {
     const priceInput = document.getElementById('prod-price');
 
-    // ── Live commission preview ──
     if (priceInput) {
       priceInput.addEventListener('input', updateCommissionPreview);
     }
@@ -541,8 +593,8 @@ if (IS_DASHBOARD) {
     }
 
     // ── Image Upload Setup ──
-    let _selectedFile    = null;   // File object selected by user
-    let _uploadedImgUrl  = '';     // URL after Firebase Storage upload
+    let _selectedFile   = null;
+    let _uploadedImgUrl = '';
 
     const fileInput     = document.getElementById('prod-img-file');
     const pickBtn       = document.getElementById('img-pick-btn');
@@ -555,20 +607,17 @@ if (IS_DASHBOARD) {
     const progressBar   = document.getElementById('upload-progress-bar');
     const progressLabel = document.getElementById('upload-progress-label');
 
-    // Open file picker
     if (pickBtn)  pickBtn.addEventListener('click',  () => fileInput && fileInput.click());
     if (dropZone) dropZone.addEventListener('click', (e) => {
       if (e.target !== pickBtn) fileInput && fileInput.click();
     });
 
-    // File selected via input
     if (fileInput) {
       fileInput.addEventListener('change', () => {
         if (fileInput.files && fileInput.files[0]) handleFileSelected(fileInput.files[0]);
       });
     }
 
-    // Drag and drop
     if (uploadBox) {
       uploadBox.addEventListener('dragover', (e) => {
         e.preventDefault();
@@ -583,50 +632,42 @@ if (IS_DASHBOARD) {
       });
     }
 
-    // Remove image
     if (removeBtn) {
       removeBtn.addEventListener('click', () => {
         _selectedFile   = null;
         _uploadedImgUrl = '';
-        if (fileInput)    fileInput.value = '';
-        if (previewWrap)  previewWrap.style.display = 'none';
-        if (dropZone)     dropZone.style.display     = 'flex';
-        if (progressWrap) progressWrap.style.display = 'none';
-        if (progressBar)  progressBar.style.width    = '0%';
+        if (fileInput)    fileInput.value            = '';
+        if (previewWrap)  previewWrap.style.display  = 'none';
+        if (dropZone)     dropZone.style.display      = 'flex';
+        if (progressWrap) progressWrap.style.display  = 'none';
+        if (progressBar)  progressBar.style.width     = '0%';
       });
     }
 
-    /** Handle a File object — validate, show preview, store in _selectedFile */
     function handleFileSelected(file) {
-      // Validate type
       if (!file.type.startsWith('image/')) {
         showToast('Please select an image file (JPG, PNG, WEBP).', 'error');
         return;
       }
-      // Validate size (5 MB max)
       if (file.size > 5 * 1024 * 1024) {
         showToast('Image too large. Maximum size is 5 MB.', 'error');
         return;
       }
-
       _selectedFile   = file;
-      _uploadedImgUrl = ''; // reset old URL
-
-      // Show local preview immediately
+      _uploadedImgUrl = '';
       const reader = new FileReader();
       reader.onload = (e) => {
-        if (previewImg)  previewImg.src         = e.target.result;
+        if (previewImg)  previewImg.src            = e.target.result;
         if (previewWrap) previewWrap.style.display = 'block';
-        if (dropZone)    dropZone.style.display    = 'none';
+        if (dropZone)    dropZone.style.display     = 'none';
       };
       reader.readAsDataURL(file);
     }
 
-    // ── Cloudinary Config (free tier — no credit card) ──
+    // ── Cloudinary Config ──
     const CLOUDINARY_CLOUD  = 'dktv09vry';
     const CLOUDINARY_PRESET = 'lkmart_upload';
 
-    /** Upload selected file to Cloudinary, return secure image URL */
     async function uploadImageToStorage() {
       if (!_selectedFile) return '';
 
@@ -641,14 +682,12 @@ if (IS_DASHBOARD) {
       formData.append('upload_preset',  CLOUDINARY_PRESET);
       formData.append('folder',         'lkmart_products');
 
-      // Cloudinary doesn't stream progress over fetch easily,
-      // so we simulate a progress animation while waiting
       let fakeProgress = 0;
       const fakeTimer = setInterval(() => {
         if (fakeProgress < 85) {
           fakeProgress += Math.random() * 12;
-          if (progressBar)  progressBar.style.width    = Math.min(fakeProgress, 85) + '%';
-          if (progressLabel) progressLabel.textContent = `Uploading… ${Math.round(Math.min(fakeProgress, 85))}%`;
+          if (progressBar)   progressBar.style.width    = Math.min(fakeProgress, 85) + '%';
+          if (progressLabel) progressLabel.textContent  = `Uploading… ${Math.round(Math.min(fakeProgress, 85))}%`;
         }
       }, 300);
 
@@ -658,7 +697,6 @@ if (IS_DASHBOARD) {
           { method: 'POST', body: formData }
         );
         const data = await res.json();
-
         clearInterval(fakeTimer);
 
         if (data.secure_url) {
@@ -690,15 +728,13 @@ if (IS_DASHBOARD) {
       const price    = parseFloat(document.getElementById('prod-price').value);
       const location = document.getElementById('prod-location').value.trim();
       const urlInput = document.getElementById('prod-img').value.trim();
+      const qty      = parseInt(document.getElementById('prod-qty').value) || 0;
 
       const { comm, final, isPremium } = calcCommission(price);
 
       setLoading('add-product-btn', 'add-btn-text', 'add-btn-spinner', true);
 
       try {
-        // Determine final image URL:
-        // 1. If file selected → upload to Firebase Storage
-        // 2. Else use manually typed URL
         let imageUrl = urlInput;
         if (_selectedFile) {
           try {
@@ -718,6 +754,8 @@ if (IS_DASHBOARD) {
           finalPrice:  final,
           isPremium,
           location,
+          quantity:    qty,
+          inStock:     qty > 0,
           imageUrl:    imageUrl || '',
           sellerId:    uid,
           createdAt:   firebase.firestore.FieldValue.serverTimestamp()
@@ -725,7 +763,6 @@ if (IS_DASHBOARD) {
 
         showToast(`"${name}" added successfully!`, 'success');
 
-        // Reset form + image state
         document.getElementById('add-product-form').reset();
         document.getElementById('commission-box').classList.remove('show');
         _selectedFile   = null;
@@ -734,7 +771,6 @@ if (IS_DASHBOARD) {
         if (previewWrap)  previewWrap.style.display  = 'none';
         if (dropZone)     dropZone.style.display      = 'flex';
 
-        // Switch to My Listings
         switchTab('listings');
 
       } catch (err) {
@@ -748,7 +784,6 @@ if (IS_DASHBOARD) {
   function validateAddForm() {
     let valid = true;
 
-    // Name
     const name    = document.getElementById('prod-name');
     const nameErr = document.getElementById('prod-name-error');
     if (!name.value.trim()) {
@@ -760,7 +795,6 @@ if (IS_DASHBOARD) {
       nameErr.classList.remove('show');
     }
 
-    // Price
     const price    = document.getElementById('prod-price');
     const priceErr = document.getElementById('prod-price-error');
     if (!price.value || parseFloat(price.value) < 1) {
@@ -772,7 +806,6 @@ if (IS_DASHBOARD) {
       priceErr.classList.remove('show');
     }
 
-    // Location
     const loc    = document.getElementById('prod-location');
     const locErr = document.getElementById('prod-location-error');
     if (!loc.value.trim()) {
@@ -784,7 +817,19 @@ if (IS_DASHBOARD) {
       locErr.classList.remove('show');
     }
 
-    // Image URL (optional but must be valid if provided)
+    const qtyEl  = document.getElementById('prod-qty');
+    const qtyErr = document.getElementById('prod-qty-error');
+    if (qtyEl) {
+      if (qtyEl.value === '' || parseInt(qtyEl.value) < 0) {
+        qtyEl.classList.add('is-error');
+        qtyErr.classList.add('show');
+        valid = false;
+      } else {
+        qtyEl.classList.remove('is-error');
+        qtyErr.classList.remove('show');
+      }
+    }
+
     const img    = document.getElementById('prod-img');
     const imgErr = document.getElementById('prod-img-error');
     if (img.value.trim() && !isValidUrl(img.value.trim())) {
@@ -800,7 +845,7 @@ if (IS_DASHBOARD) {
   }
 
   // ──────────────────────────────────────────────────────────
-  //  CLEAR FORM BUTTON
+  //  CLEAR FORM
   // ──────────────────────────────────────────────────────────
   function initClearForm() {
     const btn = document.getElementById('clear-form-btn');
@@ -810,52 +855,68 @@ if (IS_DASHBOARD) {
       const box = document.getElementById('commission-box');
       if (box) box.classList.remove('show');
       clearAlert('add-alert');
-      // clear error states
       document.querySelectorAll('#add-product-form .form-input').forEach(el => el.classList.remove('is-error'));
       document.querySelectorAll('#add-product-form .error-msg').forEach(el => el.classList.remove('show'));
     });
   }
 
   // ──────────────────────────────────────────────────────────
-  //  SEARCH
+  //  SEARCH + LOCATION FILTER
   // ──────────────────────────────────────────────────────────
-  // allProducts is populated by loadAllProducts listener above.
-  // Search simply filters the already-rendered grid client-side.
-  let _allProducts = [];
+  function initSearchAndFilter() {
+    const searchInput    = document.getElementById('search-input');
+    const locationSelect = document.getElementById('location-filter');
 
-  function initSearch() {
-    const input = document.getElementById('search-input');
-    if (!input) return;
+    if (searchInput)    searchInput.addEventListener('input', applySearchAndFilter);
+    if (locationSelect) locationSelect.addEventListener('change', applySearchAndFilter);
+  }
 
-    // Re-hook loadAllProducts to also store products for search
-    db.collection('products')
-      .onSnapshot(snapshot => {
-        _allProducts = snapshot.docs
-          .map(d => ({ id: d.id, ...d.data() }))
-          .sort((a, b) => {
-            const ta = a.createdAt ? a.createdAt.toMillis() : 0;
-            const tb = b.createdAt ? b.createdAt.toMillis() : 0;
-            return tb - ta;
-          });
-        applySearch();
-        updateStats(_allProducts);
-      });
+  function applySearchAndFilter() {
+    const q   = (document.getElementById('search-input')?.value || '').trim().toLowerCase();
+    const loc = (document.getElementById('location-filter')?.value || '').toLowerCase();
 
-    function applySearch() {
-      const q = input.value.trim().toLowerCase();
-      const filtered = q
-        ? _allProducts.filter(p =>
-            p.name.toLowerCase().includes(q) ||
-            p.location.toLowerCase().includes(q)
-          )
-        : _allProducts;
+    let filtered = _allProducts;
 
-      renderShopGrid(filtered);
-      const countLabel = document.getElementById('products-count');
-      if (countLabel) countLabel.textContent = `${filtered.length} product${filtered.length !== 1 ? 's' : ''}`;
+    if (q) {
+      filtered = filtered.filter(p =>
+        p.name.toLowerCase().includes(q) ||
+        (p.location || '').toLowerCase().includes(q)
+      );
     }
 
-    input.addEventListener('input', applySearch);
+    if (loc) {
+      filtered = filtered.filter(p =>
+        (p.location || '').toLowerCase() === loc
+      );
+    }
+
+    renderShopGrid(filtered);
+    const countLabel = document.getElementById('products-count');
+    if (countLabel) countLabel.textContent = `${filtered.length} product${filtered.length !== 1 ? 's' : ''}`;
+    updateStats(filtered);
+  }
+
+  /** Populate the location filter dropdown with unique cities */
+  function updateLocationFilter(products) {
+    const select = document.getElementById('location-filter');
+    if (!select) return;
+
+    const current = select.value;
+    const cities  = [...new Set(
+      products
+        .map(p => (p.location || '').trim())
+        .filter(Boolean)
+        .map(c => c.charAt(0).toUpperCase() + c.slice(1).toLowerCase())
+    )].sort();
+
+    select.innerHTML = '<option value="">All Cities</option>';
+    cities.forEach(city => {
+      const opt = document.createElement('option');
+      opt.value = city.toLowerCase();
+      opt.textContent = city;
+      if (opt.value === current) opt.selected = true;
+      select.appendChild(opt);
+    });
   }
 
   // ──────────────────────────────────────────────────────────
@@ -876,10 +937,10 @@ if (IS_DASHBOARD) {
   }
 
   // ──────────────────────────────────────────────────────────
-  //  MODAL
+  //  MODAL — Buy Now
   // ──────────────────────────────────────────────────────────
   function initModal() {
-    const overlay = document.getElementById('modal-overlay');
+    const overlay  = document.getElementById('modal-overlay');
     const closeBtn = document.getElementById('modal-close');
     const buyBtn   = document.getElementById('modal-buy-btn');
 
@@ -890,7 +951,33 @@ if (IS_DASHBOARD) {
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
 
     if (buyBtn) {
-      buyBtn.addEventListener('click', () => {
+      buyBtn.addEventListener('click', async () => {
+        const productId = buyBtn.dataset.productId;
+        if (!productId) return;
+
+        const p = _allProducts.find(x => x.id === productId);
+        if (!p) return;
+
+        const qty = typeof p.quantity !== 'undefined' ? parseInt(p.quantity) : null;
+        if (qty !== null && qty <= 0) {
+          showToast('This product is out of stock.', 'error');
+          return;
+        }
+
+        // Decrement quantity in Firestore
+        if (qty !== null) {
+          try {
+            const newQty = qty - 1;
+            await db.collection('products').doc(productId).update({
+              quantity: newQty,
+              inStock:  newQty > 0
+            });
+          } catch (err) {
+            showToast('Could not update stock: ' + err.message, 'error');
+            return;
+          }
+        }
+
         showToast('Order placed! (Demo mode — no real payment)', 'success');
         closeModal();
       });
@@ -902,10 +989,39 @@ if (IS_DASHBOARD) {
     if (!overlay) return;
 
     const { final } = calcCommission(product.sellerPrice);
+    const qty       = typeof product.quantity !== 'undefined' ? parseInt(product.quantity) : null;
+    const outOfStock = qty !== null && qty <= 0;
 
     document.getElementById('modal-name').textContent     = product.name;
     document.getElementById('modal-location').textContent = '📍 ' + product.location;
     document.getElementById('modal-price').textContent    = formatINR(final);
+
+    // Qty info in modal
+    const qtyInfo = document.getElementById('modal-qty-info');
+    if (qtyInfo) {
+      if (qty !== null) {
+        qtyInfo.innerHTML = outOfStock
+          ? `<span class="qty-badge out-of-stock" style="display:inline-block;margin-bottom:0.4rem;">Out of Stock</span>`
+          : `<span class="qty-badge in-stock" style="display:inline-block;margin-bottom:0.4rem;">Available: ${qty}</span>`;
+      } else {
+        qtyInfo.innerHTML = '';
+      }
+    }
+
+    // Buy Now button state
+    const buyBtn = document.getElementById('modal-buy-btn');
+    if (buyBtn) {
+      buyBtn.dataset.productId = product.id;
+      if (outOfStock) {
+        buyBtn.textContent = 'Out of Stock';
+        buyBtn.disabled    = true;
+        buyBtn.classList.add('btn-disabled');
+      } else {
+        buyBtn.textContent = 'Buy Now';
+        buyBtn.disabled    = false;
+        buyBtn.classList.remove('btn-disabled');
+      }
+    }
 
     const imgWrap = document.querySelector('.modal-img-wrap');
     const img     = document.getElementById('modal-img');
@@ -915,7 +1031,6 @@ if (IS_DASHBOARD) {
       img.style.display = 'block';
       img.onerror = () => {
         img.style.display = 'none';
-        // Show a grey placeholder in modal if image fails
         if (imgWrap) imgWrap.style.background = '#f5f5f5';
       };
     } else {
@@ -933,19 +1048,6 @@ if (IS_DASHBOARD) {
   }
 
 } // end IS_DASHBOARD
-
-
-// ──────────────────────────────────────────────────────────
-//  ESCAPE HTML (XSS protection)
-// ──────────────────────────────────────────────────────────
-function esc(str) {
-  return String(str ?? '')
-    .replace(/&/g,  '&amp;')
-    .replace(/</g,  '&lt;')
-    .replace(/>/g,  '&gt;')
-    .replace(/"/g,  '&quot;')
-    .replace(/'/g,  '&#39;');
-}
 
 // ──────────────────────────────────────────────────────────
 //  GLOBAL showToast (used by inline onclick too)

@@ -1120,3 +1120,167 @@ img { max-width: 100%; display: block; }
   height: 1px;
   background: #e0e0e0;
 }
+
+/* ============================================================
+   NAVBAR LOGO — updated for new larger logo
+   ============================================================ */
+.nav-logo-img {
+  height: 44px;
+  width: auto;
+  background: #fff;
+  border-radius: 6px;
+  padding: 4px 10px;
+  object-fit: contain;
+  display: block;
+}
+
+/* ============================================================
+   LOCATION FILTER SELECT
+   ============================================================ */
+.location-filter-select {
+  padding: 0.52rem 0.8rem;
+  border: 1.5px solid #d9d9d9;
+  border-radius: 3px;
+  background: #fff;
+  color: #424242;
+  font-family: 'Inter', sans-serif;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.2s;
+  min-width: 130px;
+}
+.location-filter-select:focus { border-color: #2874f0; }
+
+/* ============================================================
+   QUANTITY BADGE
+   ============================================================ */
+.qty-badge {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.2rem 0.55rem;
+  border-radius: 3px;
+  margin: 0.3rem 0 0.3rem;
+  letter-spacing: 0.2px;
+}
+.qty-badge.in-stock {
+  background: #e8f5e9;
+  color: #2e7d32;
+  border: 1px solid #c8e6c9;
+}
+.qty-badge.out-of-stock {
+  background: #ffeaea;
+  color: #c62828;
+  border: 1px solid #ffcdd2;
+}
+
+/* ============================================================
+   OUT OF STOCK CARD OVERLAY
+   ============================================================ */
+.card-oos {
+  opacity: 0.78;
+}
+.card-tag.oos-tag {
+  background: #c62828;
+  left: auto;
+  right: 6px;
+  top: 30px; /* below premium tag if both */
+}
+/* When only oos-tag (no premium) keep it top-right */
+.card-tag.oos-tag:only-of-type {
+  top: 6px;
+}
+
+/* Disabled Buy Now */
+.btn-buy-now.btn-disabled,
+.btn-buy-now:disabled {
+  background: #bdbdbd !important;
+  cursor: not-allowed;
+  color: #fff;
+}
+.btn-buy-now.btn-disabled:hover {
+  background: #bdbdbd !important;
+}
+
+/* ============================================================
+   QUANTITY CONTROL ROW (seller listings)
+   ============================================================ */
+.qty-control-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0.6rem 0 0.4rem;
+  flex-wrap: wrap;
+}
+.qty-control-label {
+  font-size: 0.72rem;
+  color: #757575;
+  font-weight: 600;
+}
+.qty-btn {
+  width: 26px;
+  height: 26px;
+  border: 1.5px solid #d9d9d9;
+  border-radius: 3px;
+  background: #fff;
+  color: #424242;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.15s, background 0.15s;
+  line-height: 1;
+  padding: 0;
+}
+.qty-btn:hover:not(:disabled) {
+  border-color: #2874f0;
+  color: #2874f0;
+  background: #f0f5ff;
+}
+.qty-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.qty-display {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #212121;
+  min-width: 24px;
+  text-align: center;
+}
+.qty-display.qty-oos {
+  color: #c62828;
+}
+.oos-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #c62828;
+  background: #ffeaea;
+  border: 1px solid #ffcdd2;
+  padding: 0.15rem 0.45rem;
+  border-radius: 3px;
+}
+
+/* ============================================================
+   MODAL QTY INFO
+   ============================================================ */
+.modal-qty-info {
+  margin-bottom: 0.5rem;
+}
+
+/* ============================================================
+   ADD FORM — 3-column row for qty
+   ============================================================ */
+.form-row {
+  grid-template-columns: 1fr 1fr 1fr;
+}
+@media (max-width: 600px) {
+  .form-row { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 400px) {
+  .form-row { grid-template-columns: 1fr; }
+}

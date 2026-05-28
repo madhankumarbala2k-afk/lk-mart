@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Dashboard — LK Mart | Leon Knight Mart</title>
+  <title>Dashboard — LK Mart | Online Direct Selling Market</title>
   <meta name="description" content="LK Mart seller and buyer dashboard — add products and shop from direct sellers." />
   <link rel="icon" type="image/png" href="logo.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -15,7 +15,7 @@
 
   <!-- Loading Screen -->
   <div class="loading-screen" id="loading-screen">
-    <div class="loading-logo">LK Mart</div>
+    <img src="logo.png" alt="LK Mart" style="height:60px;object-fit:contain;margin-bottom:0.8rem;" />
     <div class="loading-bar">
       <div class="loading-bar-fill"></div>
     </div>
@@ -80,6 +80,7 @@
         <h2 class="section-heading" style="border:none;margin:0;padding:0;">All Products</h2>
 
         <div style="display:flex;align-items:center;gap:0.7rem;flex-wrap:wrap;">
+          <!-- Search box -->
           <div class="search-box">
             <input
               type="search"
@@ -89,6 +90,12 @@
             />
             <button aria-label="Search">&#128269;</button>
           </div>
+
+          <!-- Location filter -->
+          <select id="location-filter" class="location-filter-select" aria-label="Filter by city">
+            <option value="">All Cities</option>
+          </select>
+
           <span class="product-count-label" id="products-count">0 products</span>
         </div>
       </div>
@@ -128,6 +135,13 @@
               <label class="form-label" for="prod-location">Location / City *</label>
               <input id="prod-location" type="text" class="form-input" placeholder="e.g. Chennai" required />
               <span class="error-msg" id="prod-location-error">City name is required.</span>
+            </div>
+
+            <!-- Quantity field -->
+            <div class="form-group">
+              <label class="form-label" for="prod-qty">Available Quantity *</label>
+              <input id="prod-qty" type="number" class="form-input" placeholder="e.g. 10" min="0" step="1" required />
+              <span class="error-msg" id="prod-qty-error">Enter a valid quantity (min 0).</span>
             </div>
 
           </div>
@@ -244,12 +258,13 @@
         <h3 class="modal-name" id="modal-name">—</h3>
         <p  class="modal-location" id="modal-location">—</p>
         <div class="modal-price" id="modal-price">₹0</div>
+        <div class="modal-qty-info" id="modal-qty-info"></div>
         <p  class="modal-delivery">&#128666; Delivery charges vary based on location</p>
 
         <button class="btn-buy-now" id="modal-buy-btn" style="font-size:0.9rem;padding:0.75rem;">
           Buy Now
         </button>
-        <button class="btn-add-cart">
+        <button class="btn-add-cart" onclick="showToast('Added to cart (demo)', 'info')">
           Add to Cart
         </button>
       </div>
